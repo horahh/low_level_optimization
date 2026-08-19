@@ -61,6 +61,9 @@ impl<T> MpmcCircularBuffer<T> {
                     Ordering::Relaxed,
                 ) {
                     Ok(_) => {
+                        // The slot sequence number carries the synchronization for the data:
+                        // a producer publishes with Release below, and consumers observe that
+                        // publication with the Acquire load on `sequence` before reading.
                         unsafe {
                             (*slot.value.get()).write(value);
                         }
@@ -72,8 +75,8 @@ impl<T> MpmcCircularBuffer<T> {
             } else if diff < 0 {
                 return Err(value);
             } else {
-                pos = self.enqueue_pos.0.load(Ordering::Relaxed);
                 spin_loop();
+                pos = self.enqueue_pos.0.load(Ordering::Relaxed);
             }
         }
     }
@@ -104,8 +107,8 @@ impl<T> MpmcCircularBuffer<T> {
             } else if diff < 0 {
                 return None;
             } else {
-                pos = self.dequeue_pos.0.load(Ordering::Relaxed);
                 spin_loop();
+                pos = self.dequeue_pos.0.load(Ordering::Relaxed);
             }
         }
     }
@@ -113,7 +116,16 @@ impl<T> MpmcCircularBuffer<T> {
 
 impl<T> Drop for MpmcCircularBuffer<T> {
     fn drop(&mut self) {
-        while self.try_pop().is_some() {}
+        let mut pos = self.dequeue_pos.0.load(Ordering::Relaxed);
+        let end = self.enqueue_pos.0.load(Ordering::Relaxed);
+
+        while pos != end {
+            let slot = &mut self.slots[pos & self.mask];
+            unsafe {
+                (*slot.value.get()).assume_init_drop();
+            }
+            pos += 1;
+        }
     }
 }
 

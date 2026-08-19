@@ -64,6 +64,8 @@ impl<T> AtomicSpscCircularBuffer<T> {
     }
 
     pub fn len(&self) -> usize {
+        // This is an instantaneous snapshot built from two separate atomic loads.
+        // Under concurrent traffic it is best treated as an approximation.
         let head = self.head.load(Ordering::Acquire);
         let tail = self.tail.load(Ordering::Acquire);
         self.distance(head, tail)

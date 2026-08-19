@@ -99,14 +99,14 @@ class AtomicSpscCircularBuffer {
           tail_(0U),
           orderings_(orderings) {}
 
-    bool push(const T &value) {
+    bool push(T value) {
         const auto head = head_.load(std::memory_order_relaxed);
         const auto next = increment(head);
         if (next == tail_.load(orderings_.producer_tail_load)) {
             return false;
         }
 
-        storage_[head] = value;
+        storage_[head] = std::move(value);
         head_.store(next, orderings_.producer_head_store);
         return true;
     }
@@ -117,7 +117,7 @@ class AtomicSpscCircularBuffer {
             return std::nullopt;
         }
 
-        auto value = storage_[tail];
+        auto value = std::move(storage_[tail]);
         tail_.store(increment(tail), orderings_.consumer_tail_store);
         return value;
     }

@@ -14,11 +14,11 @@ This repository now contains a small set of circular-buffer implementations that
 
 ## Layout
 
-- `/home/runner/work/low_level_optimization/low_level_optimization/rust`
+- `./rust`
   - tested Rust implementations for levels 1-4
-- `/home/runner/work/low_level_optimization/low_level_optimization/c`
+- `./c`
   - C reference implementation for levels 1-3
-- `/home/runner/work/low_level_optimization/low_level_optimization/cpp`
+- `./cpp`
   - C++ reference implementation for levels 1-3
 
 ## Rust usage
@@ -26,13 +26,13 @@ This repository now contains a small set of circular-buffer implementations that
 Run tests:
 
 ```bash
-cargo test --manifest-path /home/runner/work/low_level_optimization/low_level_optimization/rust/Cargo.toml
+cargo test --manifest-path rust/Cargo.toml
 ```
 
 Build a release artifact:
 
 ```bash
-cargo build --release --manifest-path /home/runner/work/low_level_optimization/low_level_optimization/rust/Cargo.toml
+cargo build --release --manifest-path rust/Cargo.toml
 ```
 
 ## C and C++ reference files

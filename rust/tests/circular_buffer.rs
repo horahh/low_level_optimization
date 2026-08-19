@@ -125,7 +125,7 @@ fn level3_supports_custom_orderings() {
 #[test]
 fn level4_mpmc_preserves_all_values() {
     let buffer = Arc::new(MpmcCircularBuffer::with_capacity(64));
-    let consumed = Arc::new(AtomicUsize::new(0));
+    let remaining = Arc::new(AtomicUsize::new(240));
     let total = 240usize;
 
     let producer_a = {
@@ -166,20 +166,17 @@ fn level4_mpmc_preserves_all_values() {
 
     let consumer_a = {
         let buffer = Arc::clone(&buffer);
-        let consumed = Arc::clone(&consumed);
+        let remaining = Arc::clone(&remaining);
         thread::spawn(move || {
             let mut values = Vec::new();
             loop {
-                if consumed.load(Ordering::Relaxed) >= total {
+                if remaining.load(Ordering::Acquire) == 0 {
                     break;
                 }
 
                 if let Some(value) = buffer.try_pop() {
-                    let previous = consumed.fetch_add(1, Ordering::Relaxed);
-                    if previous < total {
-                        values.push(value);
-                    }
-                    if previous + 1 >= total {
+                    values.push(value);
+                    if remaining.fetch_sub(1, Ordering::AcqRel) == 1 {
                         break;
                     }
                 } else {
@@ -192,20 +189,17 @@ fn level4_mpmc_preserves_all_values() {
 
     let consumer_b = {
         let buffer = Arc::clone(&buffer);
-        let consumed = Arc::clone(&consumed);
+        let remaining = Arc::clone(&remaining);
         thread::spawn(move || {
             let mut values = Vec::new();
             loop {
-                if consumed.load(Ordering::Relaxed) >= total {
+                if remaining.load(Ordering::Acquire) == 0 {
                     break;
                 }
 
                 if let Some(value) = buffer.try_pop() {
-                    let previous = consumed.fetch_add(1, Ordering::Relaxed);
-                    if previous < total {
-                        values.push(value);
-                    }
-                    if previous + 1 >= total {
+                    values.push(value);
+                    if remaining.fetch_sub(1, Ordering::AcqRel) == 1 {
                         break;
                     }
                 } else {
@@ -223,5 +217,5 @@ fn level4_mpmc_preserves_all_values() {
     values.extend(consumer_b.join().unwrap());
     values.sort_unstable();
 
-    assert_eq!(values, (0..240).collect::<Vec<_>>());
+    assert_eq!(values, (0..total).collect::<Vec<_>>());
 }
